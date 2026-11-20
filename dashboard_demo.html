@@ -136,6 +136,7 @@
   .trade-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
   .trade-card-row-main { font-size: var(--font-min); font-weight: 700; margin-bottom: 4px; }
   .trade-card-row-meta { font-size: var(--font-min); color: var(--text-dim); }
+  .trade-card-time-profit { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
   .trade-card-spacer { flex: 1 1 auto; }
   .trade-card-prices { white-space: nowrap; }
   .dir-buy { color: var(--green); }
@@ -156,6 +157,28 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
     gap: 8px;
   }
+  .market-order-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    list-style: none;
+    min-height: 44px;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  .market-order-toggle::-webkit-details-marker { display: none; }
+  .market-order-toggle::after {
+    content: "";
+    flex: 0 0 7px;
+    height: 7px;
+    margin-inline-end: 3px;
+    border: solid var(--text-dim);
+    border-width: 0 1px 1px 0;
+    transform: rotate(45deg);
+  }
+  .market-order-controls[open] .market-order-toggle::after { transform: rotate(225deg); }
+  .market-order-toggle .market-order-heading { flex: 1; margin: 0; }
+  .market-order-controls[open] .market-order-actions { margin-top: 8px; }
   .market-order-actions button { min-width: 0; padding-inline: 4px; }
 
   .close-all-btn {
@@ -505,18 +528,22 @@
 </section>
 
 <section class="panel" aria-labelledby="manualTitle">
-  <div class="market-order-heading">
-    <h2 id="manualTitle" class="panel-title" data-i18n="market">ส่งคำสั่งตลาด</h2>
-    <div class="market-status">
-      <span id="sessionBadge"></span>
-      <time id="marketClock" data-i18n-aria="clock" aria-label="เวลาไทย"></time>
+  <details class="market-order-controls">
+    <summary class="market-order-toggle">
+      <span class="market-order-heading">
+        <span id="manualTitle" class="panel-title" data-i18n="market">ส่งคำสั่งตลาด</span>
+        <span class="market-status">
+          <span id="sessionBadge"></span>
+          <time id="marketClock" data-i18n-aria="clock" aria-label="เวลาไทย"></time>
+        </span>
+      </span>
+    </summary>
+    <div class="market-order-actions">
+      <button type="button" class="manual-buy-btn" onclick="window.requestManualTrade('H4', 'BUY')">BUY</button>
+      <button type="button" class="manual-sell-btn" onclick="window.requestManualTrade('H4', 'SELL')">SELL</button>
+      <button id="closeAllBtn" type="button" class="close-all-btn" data-i18n="closeAll">ปิดทุกไม้</button>
     </div>
-  </div>
-  <div class="market-order-actions">
-    <button type="button" class="manual-buy-btn" onclick="window.requestManualTrade('H4', 'BUY')">BUY</button>
-    <button type="button" class="manual-sell-btn" onclick="window.requestManualTrade('H4', 'SELL')">SELL</button>
-    <button id="closeAllBtn" type="button" class="close-all-btn" data-i18n="closeAll">ปิดทุกไม้</button>
-  </div>
+  </details>
   <div id="manualTradePanel"></div>
 </section>
 
@@ -1850,13 +1877,14 @@ function render() {
         return `<div class="trade-card">
           <div class="trade-card-row trade-card-row-main">
             <span class="${t.direction === 'BUY' ? 'dir-buy' : 'dir-sell'}">${t.direction}</span>
-            <span class="trade-card-spacer"></span>
-            <span class="${profitClass}">${profitText}</span>
+            <span class="opened-by-tag ${openedBy}">${openedByLabel}</span>
           </div>
           <div class="trade-card-row trade-card-row-meta">
             <span class="trade-card-prices">${parseFloat(t.entry_price).toFixed(2)} → ${t.exit_price ? parseFloat(t.exit_price).toFixed(2) : '–'}</span>
-            <span>${timeStr}</span>
-            <span class="opened-by-tag ${openedBy}">${openedByLabel}</span>
+            <span class="trade-card-time-profit">
+              <span>${timeStr}</span>
+              <span class="${profitClass}">${profitText}</span>
+            </span>
             <span class="trade-card-spacer"></span>
             ${closeBtn}
           </div>
@@ -1886,13 +1914,11 @@ function renderManualTradePanel() {
           ${openTrades.map(t => {
             const label = openedByInfo(t.opened_by).label;
             const cls = t.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
-            const ticketArg = t.ticket != null ? t.ticket : 'null';
             return `<div class="manual-status ${cls}" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex:none;">
               <div class="position-summary">
                 <span>${t.direction} @ ${parseFloat(t.entry_price).toFixed(2)} (${label})</span>
                 <span class="position-profit" data-position-profit="${allTrades.indexOf(t)}"></span>
               </div>
-              <button class="close-order-btn" onclick="window.requestCloseOrder('${eng}', ${ticketArg})">${tr('closeOrder')}</button>
             </div>`;
           }).join('')}
         </div>`

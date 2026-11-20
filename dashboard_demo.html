@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CFD (DEMO)</title>
+<title>CFD (Demo)</title>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root {
@@ -456,7 +456,7 @@
 <div id="loginOverlay" style="position:fixed; inset:0; background:var(--bg); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;">
   <div class="login-card">
     <div class="login-language"><button type="button" class="header-icon" data-language-toggle aria-label="เปลี่ยนภาษา" title="เปลี่ยนภาษา"><span aria-hidden="true">TH</span></button></div>
-    <div class="login-title">CFD (DEMO)</div>
+    <div class="login-title">CFD (Demo)</div>
     <form id="loginForm" autocomplete="on">
       <div style="margin-bottom:12px;">
         <input id="loginEmail" name="email" type="email" placeholder="อีเมล" aria-label="อีเมล" data-i18n-aria="email" data-i18n-placeholder="email" autocomplete="username"
@@ -478,7 +478,7 @@
 
 <header class="header">
   <div class="header-title">
-    <h1>CFD <span class="demo-label">DEMO</span></h1>
+    <h1>CFD <span class="demo-label">Demo</span></h1>
   </div>
   <div class="header-actions">
       <label class="header-icon" data-engine-wrap="H4" data-i18n-title="autoTrading" title="เปิดหรือปิดการเทรดอัตโนมัติ">
@@ -541,8 +541,8 @@
       </span>
     </summary>
     <div class="market-order-actions">
-      <button type="button" class="manual-buy-btn" onclick="window.requestManualTrade('H4', 'BUY')">BUY</button>
-      <button type="button" class="manual-sell-btn" onclick="window.requestManualTrade('H4', 'SELL')">SELL</button>
+      <button type="button" class="manual-buy-btn" onclick="window.requestManualTrade('H4', 'BUY')" data-i18n="buyLabel">BUY</button>
+      <button type="button" class="manual-sell-btn" onclick="window.requestManualTrade('H4', 'SELL')" data-i18n="sellLabel">SELL</button>
       <button id="closeAllBtn" type="button" class="close-all-btn" data-i18n="closeAll">ปิดทุกไม้</button>
     </div>
   </details>
@@ -693,10 +693,22 @@ const firebaseConfig = {
 // =======================================================================================
 
 const messages = {
-  "chartDisplay": ["การแสดงผลกราฟ", "Chart visibility"],
-  "showEma": ["แสดงเส้น EMA", "Show EMA lines"],
-  "showSwings": ["แสดง Swing Detection", "Show Swing Detection"],
-  "chartDisplayUnavailable": ["โหลดการตั้งค่ากราฟไม่สำเร็จ", "Could not load chart visibility"],
+  "chartDisplay": [
+    "การแสดงผลกราฟ",
+    "Chart visibility"
+  ],
+  "showEma": [
+    "แสดงเส้น EMA",
+    "Show EMA lines"
+  ],
+  "showSwings": [
+    "แสดง Swing Detection",
+    "Show swing detection"
+  ],
+  "chartDisplayUnavailable": [
+    "โหลดการตั้งค่ากราฟไม่สำเร็จ",
+    "Could not load chart visibility"
+  ],
   "connecting": [
     "กำลังเชื่อมต่อ…",
     "Connecting…"
@@ -787,7 +799,7 @@ const messages = {
   ],
   "blackout": [
     "ช่วงเวลาห้ามเปิดไม้ใหม่ (Entry Blackout)",
-    "Entry Blackout"
+    "Entry blackout"
   ],
   "start": [
     "เริ่ม",
@@ -803,15 +815,15 @@ const messages = {
   ],
   "entryLookback": [
     "H4 Entry",
-    "H4 Entry"
+    "H4 entry"
   ],
   "carryLookback": [
     "H4 Carry",
-    "H4 Carry"
+    "H4 carry"
   ],
   "speed": [
     "ความเร็วเข้า/ออก H4 CDC Cross",
-    "H4 CDC Cross Entry/Exit Speed"
+    "H4 CDC cross entry/exit speed"
   ],
   "history": [
     "เทรดล่าสุด",
@@ -915,7 +927,7 @@ const messages = {
   ],
   "emaInvalid": [
     "ค่า EMA ต้องอยู่ในช่วง 2–200 และเส้นเร็วต้องน้อยกว่าเส้นช้า",
-    "Use EMA periods from 2 to 200. Fast EMA must be lower than Slow EMA."
+    "Use EMA periods from 2 to 200. The fast EMA must be lower than the slow EMA."
   ],
   "emaPending": [
     "รอบอทใช้ค่า {fast}/{slow}",
@@ -975,11 +987,11 @@ const messages = {
   ],
   "lookback": [
     "Swing Detection Lookback (ต่อ Engine)",
-    "Swing Detection Lookback"
+    "Swing detection lookback"
   ],
   "speed1": [
     "1 (รอ H4 ปิด)",
-    "1 (Wait for H4 close)"
+    "1 (wait for H4 close)"
   ],
   "speed4": [
     "4 (H1)",
@@ -995,47 +1007,47 @@ const messages = {
   ],
   "signal": [
     "ค่า EMA ของ H4 CDC Cross",
-    "H4 CDC Cross EMA"
+    "H4 CDC cross EMA"
   ],
   "trailSetting": [
     "Trailing Stop",
-    "Trailing Stop"
+    "Trailing stop"
   ],
   "reentrySetting": [
     "Dow Re-entry",
-    "Dow Re-entry"
+    "Dow re-entry"
   ],
   "ema8_21": [
     "8/21 (เร็ว)",
-    "8/21 (Fast)"
+    "8/21 (fast)"
   ],
   "ema9_21": [
     "9/21 (เร็ว)",
-    "9/21 (Fast)"
+    "9/21 (fast)"
   ],
   "ema12_26": [
     "12/26 (ค่าเดิม)",
-    "12/26 (Default)"
+    "12/26 (default)"
   ],
   "ema13_34": [
     "13/34 (กลาง)",
-    "13/34 (Medium)"
+    "13/34 (medium)"
   ],
   "ema20_50": [
     "20/50 (กลาง)",
-    "20/50 (Medium)"
+    "20/50 (medium)"
   ],
   "ema21_55": [
     "21/55 (กลาง)",
-    "21/55 (Medium)"
+    "21/55 (medium)"
   ],
   "ema50_100": [
     "50/100 (ช้า)",
-    "50/100 (Slow)"
+    "50/100 (slow)"
   ],
   "ema50_200": [
     "50/200 (ช้ามาก)",
-    "50/200 (Very slow)"
+    "50/200 (very slow)"
   ],
   "openShort": [
     "ไม้เปิด",
@@ -1044,6 +1056,14 @@ const messages = {
   "closeHistory": [
     "ปิดประวัติเทรด",
     "Close trade history"
+  ],
+  "buyLabel": [
+    "BUY",
+    "Buy"
+  ],
+  "sellLabel": [
+    "SELL",
+    "Sell"
   ]
 };
 
@@ -1086,6 +1106,7 @@ function applyLanguage(next) {
   if (window._dbRef) {
     render();
     renderManualTradePanel();
+    for (const engine of Object.keys(charts)) updateChartMarkers(engine);
   }
 }
 
@@ -1145,6 +1166,12 @@ function updateSessionBadge() {
 }
 updateSessionBadge();
 setInterval(updateSessionBadge, 60000);
+
+function tradeSideLabel(direction) {
+  if (direction === 'BUY') return tr('buyLabel');
+  if (direction === 'SELL') return tr('sellLabel');
+  return '';
+}
 
 function fmtMoney(n) {
   const sign = n >= 0 ? '+' : '';
@@ -1714,7 +1741,7 @@ function updateChartMarkers(engineName) {
         position: isBuy ? 'belowBar' : 'aboveBar',
         color: isBuy ? '#26a69a' : '#ef5350',
         shape: isBuy ? 'arrowUp' : 'arrowDown',
-        text: `${t.direction} @ ${parseFloat(t.entry_price).toFixed(2)}`,
+        text: `${tradeSideLabel(t.direction)} @ ${parseFloat(t.entry_price).toFixed(2)}`,
       });
     } catch (e) {
       // BUG FIX: one malformed/incomplete trade doc (e.g. a hand-edited test doc
@@ -1878,7 +1905,7 @@ function render() {
           : '';
         return `<div class="trade-card">
           <div class="trade-card-row trade-card-row-main">
-            <span class="${t.direction === 'BUY' ? 'dir-buy' : 'dir-sell'}">${t.direction}</span>
+            <span class="${t.direction === 'BUY' ? 'dir-buy' : 'dir-sell'}">${tradeSideLabel(t.direction)}</span>
             <span class="opened-by-tag ${openedBy}">${openedByLabel}</span>
           </div>
           <div class="trade-card-row trade-card-row-meta">
@@ -1918,7 +1945,7 @@ function renderManualTradePanel() {
             const cls = t.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
             return `<div class="manual-status open-position-row ${cls}">
               <div class="position-summary">
-                <span>${t.direction} @ ${parseFloat(t.entry_price).toFixed(2)}</span>
+                <span>${tradeSideLabel(t.direction)} @ ${parseFloat(t.entry_price).toFixed(2)}</span>
                 <span class="position-source">(${label})</span>
               </div>
               <span class="position-profit" data-position-profit="${allTrades.indexOf(t)}"></span>

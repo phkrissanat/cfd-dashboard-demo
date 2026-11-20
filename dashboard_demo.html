@@ -605,6 +605,24 @@
     </div>
     <span class="setting-status" id="dowReentryStatus" role="status"></span>
   </section>
+  <section class="settings-group">
+    <div class="settings-heading"><h3 data-i18n="chartDisplay">การแสดงผลกราฟ</h3></div>
+    <div class="toggle-setting">
+      <label for="showEmaToggle" data-i18n="showEma">แสดงเส้น EMA</label>
+      <label class="engine-switch">
+        <input type="checkbox" id="showEmaToggle" disabled>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-setting">
+      <label for="showSwingsToggle" data-i18n="showSwings">แสดง Swing Detection</label>
+      <label class="engine-switch">
+        <input type="checkbox" id="showSwingsToggle" disabled>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <span class="setting-status" id="chartDisplayStatus" role="status"></span>
+  </section>
 </dialog>
 
 <dialog id="recentTradesDialog" class="dashboard-dialog history-dialog" aria-labelledby="recentTradesTitle">
@@ -642,6 +660,10 @@ const firebaseConfig = {
 // =======================================================================================
 
 const messages = {
+  "chartDisplay": ["การแสดงผลกราฟ", "Chart visibility"],
+  "showEma": ["แสดงเส้น EMA", "Show EMA lines"],
+  "showSwings": ["แสดง Swing Detection", "Show Swing Detection"],
+  "chartDisplayUnavailable": ["โหลดการตั้งค่ากราฟไม่สำเร็จ", "Could not load chart visibility"],
   "connecting": [
     "กำลังเชื่อมต่อ…",
     "Connecting…"
@@ -1043,6 +1065,12 @@ document.querySelectorAll('[data-language-toggle]').forEach(button => {
 });
 
 let allTrades = [];
+const chartDisplay = { show_ema: false, show_swings: false };
+const chartDisplayControls = {
+  show_ema: document.getElementById('showEmaToggle'),
+  show_swings: document.getElementById('showSwingsToggle'),
+};
+const chartDisplayStatus = document.getElementById('chartDisplayStatus');
 const charts = {}; // { H4: {chart, candleSeries, emaFastSeries, emaSlowSeries, unsubscribe} } - H1 retired (see area notes, Sep 18)
 
 // BUG FIX: must live at module scope, not nested inside one specific render function -
@@ -1139,6 +1167,24 @@ document.getElementById('recentTradesBtn').addEventListener('click', () => {
 document.getElementById('botSettingsBtn').addEventListener('click', () => {
   document.getElementById('botSettingsDialog').showModal();
 });
+
+for (const [field, toggle] of Object.entries(chartDisplayControls)) {
+  toggle.addEventListener('change', async () => {
+    toggle.disabled = true;
+    try {
+      await setDoc(doc(window._dbRef, 'bot_control', 'chart_display'), { [field]: toggle.checked }, { merge: true });
+      setMessage(chartDisplayStatus, 'saved');
+      chartDisplayStatus.style.color = 'var(--green)';
+    } catch (error) {
+      toggle.checked = chartDisplay[field];
+      setMessage(chartDisplayStatus, 'saveFailed');
+      chartDisplayStatus.style.color = 'var(--red)';
+      console.error('Failed to save chart visibility', error);
+    } finally {
+      toggle.disabled = false;
+    }
+  });
+}
 
 document.getElementById('entryBlockSaveBtn').addEventListener('click', async () => {
   if (!window._dbRef) return;
@@ -1422,8 +1468,8 @@ function setupCandleChart(engineName) {
   });
   const swingLabels = createSwingLabelLayer(chart, candleSeries);
   candleSeries.attachPrimitive(swingLabels);
-  const emaFastSeries = chart.addLineSeries({ color: '#4e81dc', lineWidth: 1 });
-  const emaSlowSeries = chart.addLineSeries({ color: '#d8802e', lineWidth: 1 });
+  const emaFastSeries = chart.addLineSeries({ color: '#4e81dc', lineWidth: 1, visible: chartDisplay.show_ema });
+  const emaSlowSeries = chart.addLineSeries({ color: '#d8802e', lineWidth: 1, visible: chartDisplay.show_ema });
 
   chart.subscribeCrosshairMove(param => {
     if (!param.point || !param.time) {
@@ -1624,7 +1670,7 @@ function updateChartMarkers(engineName) {
     }
   });
 
-  const profiles = SWING_PROFILES[engineName] || [];
+  const profiles = chartDisplay.show_swings ? (SWING_PROFILES[engineName] || []) : [];
   const swingMarks = profiles.flatMap(profile => {
     const swings = c.lastSwingsByProfile?.[profile.fieldSuffix] || [];
     return swingsToMarkers(limitSwingsForDisplay(swings), profile);
@@ -1910,6 +1956,24 @@ function startDashboard(db) {
     document.getElementById('entryBlockToggle').checked = data.enabled || false;
     if (data.start) document.getElementById('entryBlockStart').value = data.start;
     if (data.end) document.getElementById('entryBlockEnd').value = data.end;
+  });
+
+  onSnapshot(doc(db, 'bot_control', 'chart_display'), (snap) => {
+    const data = snap.exists() ? snap.data() : {};
+    for (const [field, toggle] of Object.entries(chartDisplayControls)) {
+      chartDisplay[field] = data[field] !== false;
+      toggle.checked = chartDisplay[field];
+      toggle.disabled = false;
+    }
+    for (const [engineName, chart] of Object.entries(charts)) {
+      chart.emaFastSeries.applyOptions({ visible: chartDisplay.show_ema });
+      chart.emaSlowSeries.applyOptions({ visible: chartDisplay.show_ema });
+      updateChartMarkers(engineName);
+    }
+  }, (error) => {
+    setMessage(chartDisplayStatus, 'chartDisplayUnavailable');
+    chartDisplayStatus.style.color = 'var(--red)';
+    console.error('Failed to load chart visibility', error);
   });
 
   onSnapshot(doc(db, 'bot_control', 'entry_confirm'), (snap) => {

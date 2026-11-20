@@ -69,12 +69,12 @@
     gap: 4px 8px;
     margin-bottom: 16px;
   }
-  .header-title { min-width: 0; }
+  .header-title { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 5px; min-width: 0; }
+  .header-brand { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
   .header h1 {
     font: 680 clamp(20px, 5.7cqi, 25px)/1.15 var(--font-display);
     letter-spacing: -0.035em;
   }
-  .header .status { grid-column: 1 / -1; font-size: var(--font-min); color: var(--text-dim); }
   .header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
   .demo-label {
     display: inline-block;
@@ -87,10 +87,21 @@
     letter-spacing: 0.08em;
     vertical-align: middle;
   }
-  .status.live::before {
-    content: '●';
-    color: var(--green);
-    margin-right: 6px;
+  .connection-status { display: inline-flex; color: var(--text-dim); }
+  .connection-status[data-state="connected"] { color: var(--green); }
+  .connection-status[data-state="offline"] { color: var(--red); }
+  .connection-status svg { width: 14px; height: 14px; }
+  .connection-status svg [data-icon] { display: none; }
+  .connection-status[data-state="connecting"] [data-icon="connecting"],
+  .connection-status[data-state="connected"] [data-icon="connected"],
+  .connection-status[data-state="offline"] [data-icon="offline"] { display: block; }
+  .connection-status span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .stat-grid {
@@ -442,7 +453,7 @@
   }
 
   @container dashboard (max-width: 340px) {
-    .header-actions { gap: 4px; }
+    .header-actions { gap: 2px; }
     .demo-label { margin-inline-start: 0; }
   }
 
@@ -478,7 +489,19 @@
 
 <header class="header">
   <div class="header-title">
-    <h1>CFD <span class="demo-label">Demo</span></h1>
+    <div class="header-brand">
+      <h1>CFD</h1>
+      <div id="connectionStatus" class="connection-status" role="status" data-state="connecting" data-i18n-title="connecting" title="กำลังเชื่อมต่อ…">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.5"/>
+          <path data-icon="connecting" d="M5 8h6"/>
+          <path data-icon="connected" d="m4.8 8 2 2 4.4-4.4"/>
+          <path data-icon="offline" d="m5.5 5.5 5 5m0-5-5 5"/>
+        </svg>
+        <span id="statusText" data-i18n="connecting">กำลังเชื่อมต่อ…</span>
+      </div>
+    </div>
+    <span class="demo-label">Demo</span>
   </div>
   <div class="header-actions">
       <label class="header-icon" data-engine-wrap="H4" data-i18n-title="autoTrading" title="เปิดหรือปิดการเทรดอัตโนมัติ">
@@ -493,7 +516,6 @@
       <button id="recentTradesBtn" class="header-icon" type="button" aria-haspopup="dialog" aria-controls="recentTradesDialog" data-i18n-aria="history" data-i18n-title="history" aria-label="เทรดล่าสุด" title="เทรดล่าสุด"><svg class="ui-icon icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 10a8 8 0 1 1 .9 6.4M4 5.8V10h4.2M12 7.5v4.8l2.8 1.7"/></svg></button>
       <button id="botSettingsBtn" class="header-icon" type="button" aria-haspopup="dialog" aria-controls="botSettingsDialog" data-i18n-aria="settings" data-i18n-title="settings" aria-label="ตั้งค่าบอท" title="ตั้งค่าบอท"><svg class="ui-icon icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h5m4 0h7M4 12h10m4 0h2M4 18h2m4 0h10"/><circle cx="11" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></button>
   </div>
-  <div class="status" id="statusText" role="status" data-i18n="connecting">กำลังเชื่อมต่อ…</div>
 </header>
 
 <div class="stat-grid" id="statGrid" role="group" data-i18n-aria="overview" aria-label="ภาพรวม">
@@ -1079,6 +1101,14 @@ function setMessage(element, key, values) {
   if (values) element.dataset.i18nValues = JSON.stringify(values);
   else delete element.dataset.i18nValues;
   element.textContent = tr(key, values);
+}
+
+function setConnectionStatus(state) {
+  const indicator = document.getElementById('connectionStatus');
+  indicator.dataset.state = state;
+  indicator.dataset.i18nTitle = state;
+  indicator.title = tr(state);
+  setMessage(document.getElementById('statusText'), state);
 }
 
 function applyLanguage(next) {
@@ -2127,13 +2157,12 @@ function startDashboard(db) {
 
   onSnapshot(q, (snapshot) => {
     allTrades = snapshot.docs.map(d => d.data());
-    setMessage(document.getElementById('statusText'), 'connected');
-    document.getElementById('statusText').classList.add('live');
+    setConnectionStatus('connected');
     render();
     renderManualTradePanel();
     updateChartMarkers('H4');
   }, (error) => {
-    setMessage(document.getElementById('statusText'), 'offline');
+    setConnectionStatus('offline');
     console.error(error);
   });
 }

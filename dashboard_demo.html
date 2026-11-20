@@ -225,6 +225,10 @@
     color: var(--text-dim);
     flex: 1;
   }
+  .position-summary { min-width: 0; overflow-wrap: anywhere; }
+  .position-profit { display: block; margin-top: 3px; color: var(--text-dim); }
+  .position-profit.profit-pos { color: var(--green); }
+  .position-profit.profit-neg { color: var(--red); }
   .manual-status.pos-buy { color: var(--green); }
   .manual-status.pos-sell { color: var(--red); }
   .manual-buy-btn, .manual-sell-btn {
@@ -819,10 +823,6 @@ const messages = {
   "openState": [
     "เปิดอยู่",
     "Open"
-  ],
-  "floating": [
-    "ลอย",
-    "Unrealized"
   ],
   "openCount": [
     "{count} ไม้เปิดอยู่",
@@ -1609,6 +1609,32 @@ function getLatestPrice(engineName) {
   return c.lastBars[c.lastBars.length - 1].close;
 }
 
+function floatingPriceChange(trade) {
+  const livePrice = getLatestPrice(trade.engine);
+  const entry = parseFloat(trade.entry_price);
+  if (!Number.isFinite(livePrice) || !Number.isFinite(entry)) return null;
+  return trade.direction === 'BUY' ? livePrice - entry : entry - livePrice;
+}
+
+function floatingProfitDisplay(trade) {
+  const value = floatingPriceChange(trade);
+  if (value == null) return { text: tr('openState'), className: '' };
+  return {
+    text: fmtMoney(value),
+    className: value >= 0 ? 'profit-pos' : 'profit-neg',
+  };
+}
+
+function updateManualTradeProfits() {
+  for (const element of document.querySelectorAll('#manualTradePanel [data-position-profit]')) {
+    const trade = allTrades[Number(element.dataset.positionProfit)];
+    if (!trade) continue;
+    const { text, className } = floatingProfitDisplay(trade);
+    element.textContent = className ? text : '—';
+    element.className = 'position-profit ' + className;
+  }
+}
+
 function updateSlLine(engineName) {
   const c = charts[engineName];
   if (!c || !c.candleSeries) return;
@@ -1706,6 +1732,7 @@ function subscribeToLiveBars(db, engineName) {
 
     recomputeSwings(engineName, db);
     render();
+    updateManualTradeProfits();
   }, (err) => console.error(`live_bars listener error (${engineName})`, err));
 }
 
@@ -1807,23 +1834,13 @@ function render() {
       // whole "เทรดล่าสุด" table, even though every other trade was fine. Skip just
       // the one bad row instead.
       try {
-        const isBuy = t.direction === 'BUY';
-        let profit, profitClass, profitText;
+        let profitClass, profitText;
         if (t.status === 'closed') {
-          profit = parseFloat(t.profit || 0);
+          const profit = parseFloat(t.profit || 0);
           profitClass = profit >= 0 ? 'profit-pos' : 'profit-neg';
           profitText = fmtMoney(profit);
         } else {
-          const livePrice = getLatestPrice(t.engine);
-          if (livePrice != null) {
-            const entry = parseFloat(t.entry_price);
-            profit = isBuy ? (livePrice - entry) : (entry - livePrice);
-            profitClass = profit >= 0 ? 'profit-pos' : 'profit-neg';
-            profitText = `${fmtMoney(profit)} (${tr('floating')})`;
-          } else {
-            profitClass = '';
-            profitText = tr('openState');
-          }
+          ({ text: profitText, className: profitClass } = floatingProfitDisplay(t));
         }
         const { cls: openedBy, label: openedByLabel } = openedByInfo(t.opened_by);
         const timeStr = new Date(t.entry_time).toLocaleString(language === 'en' ? 'en-GB' : 'th-TH', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
@@ -1871,7 +1888,10 @@ function renderManualTradePanel() {
             const cls = t.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
             const ticketArg = t.ticket != null ? t.ticket : 'null';
             return `<div class="manual-status ${cls}" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex:none;">
-              <span>${t.direction} @ ${parseFloat(t.entry_price).toFixed(2)} (${label})</span>
+              <div class="position-summary">
+                <span>${t.direction} @ ${parseFloat(t.entry_price).toFixed(2)} (${label})</span>
+                <span class="position-profit" data-position-profit="${allTrades.indexOf(t)}"></span>
+              </div>
               <button class="close-order-btn" onclick="window.requestCloseOrder('${eng}', ${ticketArg})">${tr('closeOrder')}</button>
             </div>`;
           }).join('')}
@@ -1882,6 +1902,7 @@ function renderManualTradePanel() {
     </div>
     ${positionsHtml}`;
   }).join('');
+  updateManualTradeProfits();
 }
 
 window.requestManualTrade = async function(engineName, direction) {

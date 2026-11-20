@@ -248,8 +248,10 @@
     color: var(--text-dim);
     flex: 1;
   }
-  .position-summary { min-width: 0; overflow-wrap: anywhere; }
-  .position-profit { display: block; margin-top: 3px; color: var(--text-dim); }
+  .open-position-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .position-summary { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }
+  .position-source { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .position-profit { flex: 0 0 auto; margin-inline-start: auto; text-align: end; white-space: nowrap; color: var(--text-dim); }
   .position-profit.profit-pos { color: var(--green); }
   .position-profit.profit-neg { color: var(--red); }
   .manual-status.pos-buy { color: var(--green); }
@@ -1914,11 +1916,12 @@ function renderManualTradePanel() {
           ${openTrades.map(t => {
             const label = openedByInfo(t.opened_by).label;
             const cls = t.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
-            return `<div class="manual-status ${cls}" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex:none;">
+            return `<div class="manual-status open-position-row ${cls}">
               <div class="position-summary">
-                <span>${t.direction} @ ${parseFloat(t.entry_price).toFixed(2)} (${label})</span>
-                <span class="position-profit" data-position-profit="${allTrades.indexOf(t)}"></span>
+                <span>${t.direction} @ ${parseFloat(t.entry_price).toFixed(2)}</span>
+                <span class="position-source">(${label})</span>
               </div>
+              <span class="position-profit" data-position-profit="${allTrades.indexOf(t)}"></span>
             </div>`;
           }).join('')}
         </div>`

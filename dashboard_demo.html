@@ -105,16 +105,16 @@
 
   .stat-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: 12px;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--panel);
   }
-  .stat-card { padding: 9px clamp(5px, 2cqi, 10px); white-space: nowrap; }
+  .stat-card { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 9px clamp(6px, 2.5cqi, 12px); min-width: 0; white-space: nowrap; }
   .stat-card + .stat-card { border-inline-start: 1px solid var(--border); }
-  .stat-card .label { margin-bottom: 3px; color: var(--text-dim); font-size: var(--font-min); }
-  .stat-card .value { font: 600 var(--font-min)/1.25 var(--font-mono); white-space: normal; overflow-wrap: anywhere; }
+  .stat-card .label { color: var(--text-dim); font-size: var(--font-min); }
+  .stat-card .value { font: 600 var(--font-min)/1.25 var(--font-mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .stat-card .value.pos { color: var(--green); }
   .stat-card .value.neg { color: var(--red); }
 
@@ -520,20 +520,12 @@
 
 <div class="stat-grid" id="statGrid" role="group" data-i18n-aria="overview" aria-label="ภาพรวม">
   <div class="stat-card">
-    <div class="label" data-i18n="profitShort" data-i18n-title="profit" title="กำไรรวม">กำไรรวม</div>
+    <div class="label" data-i18n-title="profit" title="กำไรรวม">PnL</div>
     <div class="value" id="statProfit">–</div>
   </div>
   <div class="stat-card">
-    <div class="label" data-i18n="openShort" data-i18n-title="open" title="ไม้เปิด">ไม้เปิด</div>
-    <div class="value" id="statOpen">–</div>
-  </div>
-  <div class="stat-card">
-    <div class="label" data-i18n="winRateShort" data-i18n-title="winRate" title="Win Rate">ชนะ %</div>
+    <div class="label" data-i18n-title="winRate" title="อัตราชนะ">WR%</div>
     <div class="value" id="statWinRate">–</div>
-  </div>
-  <div class="stat-card">
-    <div class="label" data-i18n="profitFactorShort" data-i18n-title="profitFactor" title="Profit Factor">PF</div>
-    <div class="value" id="statPF">–</div>
   </div>
 </div>
 
@@ -803,17 +795,9 @@ const messages = {
     "ภาพรวม",
     "Overview"
   ],
-  "open": [
-    "ไม้เปิด",
-    "Open trades"
-  ],
   "winRate": [
     "อัตราชนะ",
     "Win rate"
-  ],
-  "profitFactor": [
-    "อัตรากำไรต่อขาดทุน",
-    "Profit factor"
   ],
   "settings": [
     "ตั้งค่าบอท",
@@ -991,18 +975,6 @@ const messages = {
     "เปลี่ยนเป็นภาษาอังกฤษ",
     "Switch to Thai"
   ],
-  "profitShort": [
-    "กำไรรวม",
-    "P/L"
-  ],
-  "winRateShort": [
-    "ชนะ %",
-    "Win %"
-  ],
-  "profitFactorShort": [
-    "PF",
-    "PF"
-  ],
   "closeSettings": [
     "ปิดการตั้งค่า",
     "Close settings"
@@ -1070,10 +1042,6 @@ const messages = {
   "ema50_200": [
     "50/200 (ช้ามาก)",
     "50/200 (very slow)"
-  ],
-  "openShort": [
-    "ไม้เปิด",
-    "Open"
   ],
   "closeHistory": [
     "ปิดประวัติเทรด",
@@ -1887,21 +1855,14 @@ function render() {
   const trades = allTrades;
 
   const closed = trades.filter(t => t.status === 'closed');
-  const open = trades.filter(t => t.status === 'open');
   const wins = closed.filter(t => parseFloat(t.profit) > 0);
-  const losses = closed.filter(t => parseFloat(t.profit) <= 0);
   const totalProfit = closed.reduce((s, t) => s + parseFloat(t.profit || 0), 0);
-  const winSum = wins.reduce((s, t) => s + parseFloat(t.profit), 0);
-  const lossSum = Math.abs(losses.reduce((s, t) => s + parseFloat(t.profit), 0));
-  const pf = lossSum > 0 ? (winSum / lossSum) : (winSum > 0 ? Infinity : 0);
   const winRate = closed.length ? (wins.length / closed.length * 100) : 0;
 
   document.getElementById('statWinRate').textContent = closed.length ? `${winRate.toFixed(1)}%` : '–';
   const profitEl = document.getElementById('statProfit');
   profitEl.textContent = closed.length ? fmtMoney(totalProfit) : '–';
   profitEl.className = 'value ' + (totalProfit >= 0 ? 'pos' : 'neg');
-  document.getElementById('statPF').textContent = closed.length ? (pf === Infinity ? '∞' : pf.toFixed(2)) : '–';
-  document.getElementById('statOpen').textContent = open.length;
 
 
   const tbody = document.getElementById('tradeTableBody');

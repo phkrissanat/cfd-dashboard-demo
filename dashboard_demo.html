@@ -290,27 +290,60 @@
     background: linear-gradient(160deg, var(--chart-surface), var(--panel) 54%);
     box-shadow: var(--shadow);
   }
-  .settings-group { padding: 12px; border-top: 1px solid var(--border); }
-  .settings-group h3 { font-size: var(--font-min); font-weight: 600; }
+  .dashboard-dialog.settings-sheet {
+    --settings-surface: #0d121c;
+    --settings-switch-off: #455268;
+    --settings-switch-on: #30c66f;
+    background: var(--settings-surface);
+    border-radius: 24px;
+    padding-bottom: 12px;
+  }
+  html[data-theme="light"] .settings-sheet { --settings-surface: #eff3f9; --settings-switch-off: #8c9ab0; }
+  .settings-sheet .dashboard-dialog-header {
+    padding: 12px 14px 10px;
+    background: var(--settings-surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-sheet .dashboard-dialog-header .panel-title { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+  .settings-sheet .dashboard-dialog-header .header-icon { border-radius: 50%; }
+  .settings-group {
+    margin: 12px 10px 0;
+    padding: 11px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+  }
+  .settings-group h3 { margin: 0; font-size: var(--font-min); font-weight: 650; }
   .settings-heading, .settings-row { display: flex; align-items: center; gap: 8px; }
-  .settings-heading { justify-content: space-between; margin-bottom: 8px; }
+  .settings-heading { justify-content: space-between; margin-bottom: 8px; min-height: 26px; }
   .settings-row { align-items: end; flex-wrap: wrap; }
-  .settings-row label { display: grid; gap: 4px; flex: 1 1 70px; font-size: var(--font-min); color: var(--text-dim); }
+  .settings-row label { display: grid; gap: 4px; flex: 1 1 65px; min-width: 0; font-size: var(--font-min); color: var(--text-dim); }
   .settings-row input, .settings-row select, .save-btn {
     min-width: 0;
+    min-height: 44px;
     border: 1px solid var(--border);
-    border-radius: 7px;
+    border-radius: 10px;
     background: var(--panel-2);
     color: var(--text);
-    padding: 7px;
+    padding: 8px;
+    font-size: var(--font-min);
   }
-  .settings-row label:has(input[type="time"]) { flex-basis: 124px; }
-  .settings-row input, .settings-row select { width: 100%; min-height: 44px; font-size: var(--font-min); }
+  .settings-row label:has(input[type="time"]) { flex-basis: 112px; }
+  .settings-row input, .settings-row select { width: 100%; }
   .settings-row select { flex: 1; }
-  .save-btn { cursor: pointer; padding-inline: 10px; font-size: var(--font-min); }
+  .settings-row input[type="number"] { font-variant-numeric: tabular-nums; }
+  .save-btn { cursor: pointer; background: var(--accent-field); color: var(--accent); border-color: transparent; padding-inline: 12px; font-weight: 650; }
+  .save-btn:hover { border-color: var(--accent); }
   .setting-status { display: block; color: var(--text-dim); font-size: var(--font-min); }
   .setting-status:not(:empty) { margin-top: 6px; }
-  .toggle-setting { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 38px; }
+  .toggle-setting { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 50px; }
+  .toggle-setting:not(:first-child) { border-top: 1px solid var(--border); }
+  .settings-sheet .engine-switch { width: 50px; height: 44px; }
+  .settings-sheet .engine-switch .slider { inset: 7px 0; background: var(--settings-switch-off); }
+  .settings-sheet .engine-switch .slider::before { width: 24px; height: 24px; inset: 3px auto auto 3px; box-shadow: 0 1px 3px #0004; }
+  .settings-sheet .engine-switch input:checked + .slider { background: var(--settings-switch-on); }
+  .settings-sheet .engine-switch input:checked + .slider::before { transform: translateX(20px); }
+  .settings-sheet .engine-switch input:disabled + .slider { opacity: .55; cursor: default; }
   .login-card {
     width: 100%;
     max-width: 340px;
@@ -513,7 +546,7 @@
 
 <div class="stat-grid" id="statGrid" role="group" data-i18n-aria="overview" aria-label="ภาพรวม">
   <div class="stat-card">
-    <div class="label" data-i18n-title="profit" title="กำไรรวม">PnL</div>
+    <div class="label" data-i18n-title="profit" title="กำไรรวม">P/L</div>
     <div class="value" id="statProfit">–</div>
   </div>
   <div class="stat-card">
@@ -551,7 +584,7 @@
   <div id="manualTradePanel"></div>
 </section>
 
-<dialog id="botSettingsDialog" class="dashboard-dialog" aria-labelledby="botSettingsTitle">
+<dialog id="botSettingsDialog" class="dashboard-dialog settings-sheet" aria-labelledby="botSettingsTitle">
   <div class="dashboard-dialog-header">
     <h2 id="botSettingsTitle" class="panel-title" data-i18n="settings">ตั้งค่าบอท</h2>
     <form method="dialog">

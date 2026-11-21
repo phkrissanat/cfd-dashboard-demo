@@ -582,6 +582,18 @@
   </div>
 
   <section class="settings-group">
+    <div class="settings-heading"><h3 id="lotSizeTitle" data-i18n="lotSize">ขนาดล็อต</h3></div>
+    <form id="lotSizeForm" class="settings-row" novalidate>
+      <label>
+        <input id="lotSizeInput" type="number" inputmode="decimal" aria-labelledby="lotSizeTitle" aria-describedby="lotSizeLimits lotSizeStatus" data-i18n-placeholder="lotSizeDefault" placeholder="ใช้ค่าเริ่มต้น" disabled>
+      </label>
+      <button type="submit" id="lotSizeSaveBtn" class="save-btn" data-i18n="save" disabled>บันทึก</button>
+    </form>
+    <span class="setting-status" id="lotSizeLimits"></span>
+    <span class="setting-status" id="lotSizeStatus" data-i18n="lotSizeWaiting" role="status">รอข้อมูลขนาดล็อตจากบอท</span>
+  </section>
+
+  <section class="settings-group">
     <div class="settings-heading">
       <h3 data-i18n="blackout">ช่วงเวลาห้ามเปิดไม้ใหม่ (Entry Blackout)</h3>
       <label class="engine-switch">
@@ -717,6 +729,16 @@ const firebaseConfig = {
 // =======================================================================================
 
 const messages = {
+  "lotSize": ["ขนาดล็อต", "Lot size"],
+  "lotSizeDefault": ["ใช้ค่าเริ่มต้น", "Use default"],
+  "lotSizeWaiting": ["รอข้อมูลขนาดล็อตจากบอท", "Waiting for lot size limits from bot"],
+  "lotSizeUnavailable": ["อ่านการตั้งค่าขนาดล็อตไม่ได้", "Could not load lot size settings"],
+  "lotSizeLimits": ["{min}–{max} ล็อต · เพิ่มทีละ {step}", "{min}–{max} lots · Step {step}"],
+  "lotSizeInvalid": ["กรอกขนาดล็อตตามช่วงและขั้นที่ระบุ", "Enter a lot size within the range and step shown"],
+  "lotSizePending": ["รอบอทยืนยันการใช้ค่า", "Waiting for bot to apply"],
+  "lotSizeApplied": ["บอทใช้ {size} ล็อตกับออเดอร์ใหม่", "Bot uses {size} lots for new orders"],
+  "lotSizeUsingDefault": ["บอทใช้ค่าเริ่มต้น", "Bot uses its default sizing"],
+  "lotSizeRejected": ["บอทปฏิเสธค่าที่ตั้งไว้", "Bot rejected the requested lot size"],
   "chartDisplay": [
     "การแสดงผลกราฟ",
     "Chart visibility"
@@ -1245,6 +1267,80 @@ for (const [field, toggle] of Object.entries(chartDisplayControls)) {
     }
   });
 }
+
+const lotSizeInput = document.getElementById('lotSizeInput');
+const lotSizeSaveBtn = document.getElementById('lotSizeSaveBtn');
+const lotSizeStatus = document.getElementById('lotSizeStatus');
+const lotSizeLimits = document.getElementById('lotSizeLimits');
+let requestedLotSize;
+let reportedLotSize = {};
+let lotSizeDraft = false;
+let savingLotSize = false;
+let lotSizeReadFailed = false;
+
+function updateLotSizeControl() {
+  const { volume_min: min, volume_max: max, volume_step: step, state, requested_size, effective_size } = reportedLotSize;
+  const hasLimits = [min, max, step].every(value => Number.isFinite(value) && value > 0) && min <= max;
+  const ready = requestedLotSize !== undefined && hasLimits && !lotSizeReadFailed;
+  lotSizeInput.disabled = lotSizeSaveBtn.disabled = !ready || savingLotSize;
+  if (hasLimits) {
+    Object.assign(lotSizeInput, { min, max, step });
+    setMessage(lotSizeLimits, 'lotSizeLimits', { min, max, step });
+  }
+
+  if (lotSizeReadFailed) setMessage(lotSizeStatus, 'lotSizeUnavailable');
+  else if (!ready) setMessage(lotSizeStatus, 'lotSizeWaiting');
+  else if (savingLotSize) setMessage(lotSizeStatus, 'pending');
+  else if (requested_size !== requestedLotSize) setMessage(lotSizeStatus, 'lotSizePending');
+  else if (state === 'rejected') setMessage(lotSizeStatus, 'lotSizeRejected');
+  else if (Number.isFinite(effective_size)) setMessage(lotSizeStatus, 'lotSizeApplied', { size: effective_size });
+  else setMessage(lotSizeStatus, 'lotSizeUsingDefault');
+}
+
+function subscribeToLotSize(db) {
+  const onError = error => {
+    lotSizeReadFailed = true;
+    updateLotSizeControl();
+    console.error('Could not load lot size settings', error);
+  };
+  onSnapshot(doc(db, 'bot_control', 'lot_size'), snap => {
+    const size = snap.exists() ? snap.data().size : null;
+    requestedLotSize = Number.isFinite(size) ? size : null;
+    if (!lotSizeDraft) lotSizeInput.value = requestedLotSize ?? '';
+    updateLotSizeControl();
+  }, onError);
+  onSnapshot(doc(db, 'bot_control', 'lot_size_status'), snap => {
+    reportedLotSize = snap.exists() ? snap.data() : {};
+    updateLotSizeControl();
+  }, onError);
+}
+
+lotSizeInput.addEventListener('input', () => { lotSizeDraft = true; });
+
+document.getElementById('lotSizeForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (lotSizeSaveBtn.disabled || !window._dbRef) return;
+  if (!lotSizeInput.validity.valid) {
+    setMessage(lotSizeStatus, 'lotSizeInvalid');
+    return;
+  }
+
+  const size = lotSizeInput.value === '' ? null : lotSizeInput.valueAsNumber;
+  savingLotSize = true;
+  updateLotSizeControl();
+  try {
+    await setDoc(doc(window._dbRef, 'bot_control', 'lot_size'), { size }, { merge: true });
+    lotSizeDraft = false;
+  } catch (error) {
+    console.error('Could not save lot size', error);
+    savingLotSize = false;
+    updateLotSizeControl();
+    setMessage(lotSizeStatus, 'saveFailed');
+    return;
+  }
+  savingLotSize = false;
+  updateLotSizeControl();
+});
 
 document.getElementById('entryBlockSaveBtn').addEventListener('click', async () => {
   if (!window._dbRef) return;
@@ -1986,6 +2082,7 @@ document.getElementById('closeAllBtn').addEventListener('click', async () => {
 
 function startDashboard(db) {
   window._dbRef = db;
+  subscribeToLotSize(db);
   renderManualTradePanel();
 
   setupCandleChart('H4');

@@ -8,6 +8,8 @@
 <style>
   :root {
     color-scheme: dark;
+    --dashboard-width: max(320px, 56.25svh);
+    --inline-gutter: 12px;
     --bg: #0a0d14;
     --panel: #111722;
     --panel-2: #1a2432;
@@ -59,7 +61,7 @@
     font-size: var(--font-min);
     line-height: 1.4;
     min-height: 100vh;
-    padding: 12px;
+    padding: 12px var(--inline-gutter);
     transition: background 0.15s, color 0.15s;
   }
   .header {
@@ -288,7 +290,7 @@
   .opened-by-tag.manual { background: var(--accent-field); color: var(--accent); }
   #dashboardContent {
     container: dashboard / inline-size;
-    max-width: 430px;
+    width: min(100%, var(--dashboard-width));
     margin-inline: auto;
   }
 
@@ -387,7 +389,7 @@
   .dashboard-dialog {
     position: fixed;
     inset: 0;
-    width: min(430px, calc(100% - 24px));
+    width: min(var(--dashboard-width), calc(100% - 2 * var(--inline-gutter)));
     max-height: calc(100dvh - 28px);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -459,8 +461,13 @@
     .demo-label { margin-inline-start: 0; }
   }
 
-  @media (min-width: 700px) {
-    body { padding: 24px 32px; }
+  @media (min-width: 701px) {
+    :root { --inline-gutter: 32px; }
+    body { padding-block: 24px; }
+  }
+
+  @media (max-width: 700px) and (orientation: portrait) {
+    :root { --dashboard-width: 100%; --inline-gutter: 8px; }
   }
 </style>
 </head>

@@ -125,9 +125,12 @@
   .chart-wrap { position: relative; height: 210px; }
 
   .trades-list { display: flex; flex-direction: column; }
-  .trade-card { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 6px; min-height: 48px; padding-block: 2px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  .trade-card { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px; min-height: 48px; padding-block: 2px; white-space: nowrap; border-bottom: 1px solid var(--border); }
   .trade-card:last-child { border-bottom: none; }
-  .trade-card-side { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .trade-card-side { display: flex; align-items: baseline; gap: 4px; min-width: 0; font-weight: 600; }
+  .trade-card-entry { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .trade-card-source { flex-shrink: 0; }
+  @media (max-width: 360px) { .trade-card-price-separator { display: none; } }
   .trade-card-date { color: var(--text-dim); }
   .trade-card-profit { text-align: end; }
   .trade-card .close-order-btn { padding-inline: 5px; }
@@ -420,7 +423,9 @@
     background: var(--panel);
   }
   .dashboard-dialog-header .panel-title { margin: 0; }
-  .history-dialog .history-content { padding: 0 10px 8px; }
+  .history-dialog { font-family: var(--font-ui); }
+  .history-dialog button { font-family: inherit; }
+  .history-dialog .history-content { padding: 0 8px 8px; }
 
   .market-order-heading {
     display: flex;
@@ -1877,8 +1882,12 @@ function render() {
         const closeBtn = t.status === 'open'
           ? `<button class="close-order-btn" onclick="window.requestCloseOrder('${t.engine}', ${t.ticket != null ? t.ticket : 'null'})">${tr('closeOrder')}</button>`
           : '';
+        const source = openedByInfo(t.opened_by);
         return `<div class="trade-card">
-          <span class="trade-card-side ${t.direction === 'BUY' ? 'dir-buy' : 'dir-sell'}">${tradeSideLabel(t.direction)} @ ${entryPrice}</span>
+          <span class="trade-card-side ${t.direction === 'BUY' ? 'dir-buy' : 'dir-sell'}">
+            <span class="trade-card-entry">${tradeSideLabel(t.direction)} <span class="trade-card-price-separator">@ </span>${entryPrice}</span>
+            ${source.cls === 'auto' ? `<span class="trade-card-source">(${source.label})</span>` : ''}
+          </span>
           <span class="trade-card-date">${dateLabel}</span>
           <span class="trade-card-profit ${profitClass}">${profitText}</span>
           ${closeBtn}

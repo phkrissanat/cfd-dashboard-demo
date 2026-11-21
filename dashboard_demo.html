@@ -126,20 +126,13 @@
 
   .table-wrap { overflow-x: auto; }
 
-  /* Trade cards (เทรดล่าสุด) - 2 compact lines per trade instead of an 8-column
-     table, which forced horizontal scrolling on a phone-width screen and cut off
-     the action buttons entirely. flex-wrap is a safety net only (falls back to a
-     3rd line if a screen is unusually narrow or a value unusually long) - the
-     design target is 2 lines. */
-  .trades-list { display: flex; flex-direction: column; }
-  .trade-card { padding: 10px 4px; border-bottom: 1px solid var(--border); font-family: var(--font-ui); }
+  .trades-list { display: flex; flex-direction: column; width: max-content; min-width: 100%; max-width: none; }
+  .trade-card { display: flex; align-items: center; gap: 8px; padding: 8px 4px; white-space: nowrap; border-bottom: 1px solid var(--border); }
   .trade-card:last-child { border-bottom: none; }
-  .trade-card-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
-  .trade-card-row-main { font-size: var(--font-min); font-weight: 700; margin-bottom: 4px; }
-  .trade-card-row-meta { font-size: var(--font-min); color: var(--text-dim); }
-  .trade-card-time-profit { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-  .trade-card-spacer { flex: 1 1 auto; }
-  .trade-card-prices { white-space: nowrap; }
+  .trade-card-side { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+  .trade-card-prices, .trade-card-time-profit { color: var(--text-dim); }
+  .trade-card-time-profit { display: inline-flex; align-items: baseline; gap: 6px; }
+  .trade-card .close-order-btn { margin-inline-start: auto; }
   .dir-buy { color: var(--green); }
   .dir-sell { color: var(--red); }
   .profit-pos { color: var(--green); }
@@ -471,7 +464,6 @@
     .manual-buy-btn, .manual-sell-btn,
     .close-all-btn, .close-order-btn, .save-btn { min-height: 44px; }
     .close-order-btn { flex-shrink: 0; }
-    .trade-card-prices { white-space: normal; overflow-wrap: anywhere; }
   }
 
   @container dashboard (max-width: 340px) {
@@ -700,7 +692,7 @@
       <button type="submit" class="header-icon" data-i18n-aria="closeHistory" data-i18n-title="closeHistory" aria-label="ปิดประวัติเทรด" title="ปิดประวัติเทรด" autofocus><svg class="ui-icon icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </form>
   </div>
-  <div class="table-wrap">
+  <div class="table-wrap" tabindex="0" role="region" aria-labelledby="recentTradesTitle">
     <div id="tradeTableBody" class="trades-list"></div>
     <div class="empty-state" id="emptyState" style="display:none">
       <div class="big">—</div>
@@ -1892,19 +1884,16 @@ function render() {
           ? `<button class="close-order-btn" onclick="window.requestCloseOrder('${t.engine}', ${t.ticket != null ? t.ticket : 'null'})">${tr('closeOrder')}</button>`
           : '';
         return `<div class="trade-card">
-          <div class="trade-card-row trade-card-row-main">
+          <div class="trade-card-side">
             <span class="${t.direction === 'BUY' ? 'dir-buy' : 'dir-sell'}">${tradeSideLabel(t.direction)}</span>
             <span class="opened-by-tag ${openedBy}">${openedByLabel}</span>
           </div>
-          <div class="trade-card-row trade-card-row-meta">
-            <span class="trade-card-prices">${parseFloat(t.entry_price).toFixed(2)} → ${t.exit_price ? parseFloat(t.exit_price).toFixed(2) : '–'}</span>
-            <span class="trade-card-time-profit">
-              <span>${timeStr}</span>
-              <span class="${profitClass}">${profitText}</span>
-            </span>
-            <span class="trade-card-spacer"></span>
-            ${closeBtn}
-          </div>
+          <span class="trade-card-prices">${parseFloat(t.entry_price).toFixed(2)} → ${t.exit_price ? parseFloat(t.exit_price).toFixed(2) : '–'}</span>
+          <span class="trade-card-time-profit">
+            <span>${timeStr}</span>
+            <span class="${profitClass}">${profitText}</span>
+          </span>
+          ${closeBtn}
         </div>`;
       } catch (e) {
         console.error('skipping malformed trade doc in trades table', t, e);

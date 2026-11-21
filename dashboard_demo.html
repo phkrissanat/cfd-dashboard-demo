@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CFD (Demo)</title>
+<title>CFD</title>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root {
@@ -77,17 +77,6 @@
     letter-spacing: -0.035em;
   }
   .header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-  .demo-label {
-    display: inline-block;
-    margin-inline-start: 5px;
-    padding: 2px 5px;
-    background: var(--accent-field);
-    border-radius: 5px;
-    color: var(--accent);
-    font: var(--font-min) var(--font-mono);
-    letter-spacing: 0.08em;
-    vertical-align: middle;
-  }
   .header-icon.connection-status { cursor: default; }
   .connection-status[data-state="connected"] { color: var(--green); }
   .connection-status[data-state="offline"] { color: var(--red); }
@@ -458,7 +447,6 @@
   @container dashboard (max-width: 340px) {
     .header-actions { gap: 2px; }
     .header-actions .header-icon { flex-basis: 38px; width: 38px; }
-    .demo-label { margin-inline-start: 0; }
   }
 
   @media (min-width: 701px) {
@@ -476,7 +464,7 @@
 <div id="loginOverlay" style="position:fixed; inset:0; background:var(--bg); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;">
   <div class="login-card">
     <div class="login-language"><button type="button" class="header-icon" data-language-toggle aria-label="เปลี่ยนภาษา" title="เปลี่ยนภาษา"><span aria-hidden="true">TH</span></button></div>
-    <div class="login-title">CFD (Demo)</div>
+    <div class="login-title">CFD</div>
     <form id="loginForm" autocomplete="on">
       <div style="margin-bottom:12px;">
         <input id="loginEmail" name="email" type="email" placeholder="อีเมล" aria-label="อีเมล" data-i18n-aria="email" data-i18n-placeholder="email" autocomplete="username"
@@ -499,7 +487,6 @@
 <header class="header">
   <div class="header-title">
     <h1>CFD</h1>
-    <span class="demo-label">Demo</span>
   </div>
   <div class="header-actions">
       <div id="connectionStatus" class="header-icon connection-status" role="status" data-state="connecting" data-i18n-title="connecting" title="กำลังเชื่อมต่อ…">

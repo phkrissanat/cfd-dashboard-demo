@@ -431,9 +431,6 @@
   .countdown { padding: 11px 12px 7px; }
   .countdown-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: var(--font-min); color: var(--text-dim); }
   .countdown-row b { flex: 0 0 auto; color: var(--text); font: 650 var(--font-min) var(--font-mono); }
-  .countdown-track { position: relative; overflow: hidden; height: 4px; margin-top: 6px; border-radius: 4px; background: var(--border); }
-  #h4CountdownFill { width: 0; height: 100%; background: var(--accent); }
-  #h4CountdownTicks { position: absolute; inset: 0; }
 
   @container dashboard (max-width: 480px) {
     .panel { padding: 12px; }
@@ -533,10 +530,6 @@
         <span id="sessionBadge"></span>
         <time id="marketClock" data-i18n-aria="clock" aria-label="เวลาไทย"></time>
       </span>
-    </div>
-    <div id="h4CountdownBar" class="countdown-track">
-      <div id="h4CountdownFill"></div>
-      <div id="h4CountdownTicks"></div>
     </div>
   </div>
   <div class="chart-wrap" id="candleChartWrap_H4"></div>
@@ -1379,8 +1372,6 @@ const H4_MS = 4 * 60 * 60 * 1000;
 
 function renderH4Countdown() {
   const timeEl = document.getElementById('h4CountdownTime');
-  const fillEl = document.getElementById('h4CountdownFill');
-  const ticksEl = document.getElementById('h4CountdownTicks');
   if (!timeEl) return;
   const c = charts['H4'];
   const bars = c && c.lastBars;
@@ -1388,7 +1379,6 @@ function renderH4Countdown() {
   if (!bars || !bars.length || serverClockOffsetMs === null || stale) {
     timeEl.textContent = '–';
     timeEl.title = stale && serverClockUpdatedMs !== null ? tr('clockStale') : tr('clockWaiting');
-    fillEl.style.width = '0%';
     return;
   }
   const openMs = bars[bars.length - 1].time * 1000;
@@ -1397,29 +1387,13 @@ function renderH4Countdown() {
   if (elapsed < 0 || elapsed > H4_MS + 60000) {
     timeEl.textContent = '–';
     timeEl.title = tr('barWaiting');
-    fillEl.style.width = '0%';
     return;
   }
   const remaining = Math.max(0, H4_MS - elapsed);
   const pad = n => String(n).padStart(2, '0');
   const totalSec = Math.floor(remaining / 1000);
   timeEl.textContent = `${pad(Math.floor(totalSec / 3600))}:${pad(Math.floor((totalSec % 3600) / 60))}:${pad(totalSec % 60)}`;
-  const pct = Math.min(100, (elapsed / H4_MS) * 100);
   timeEl.removeAttribute('title');
-  fillEl.style.width = pct.toFixed(1) + '%';
-  // tick marks = the speed setting's slices (divisor 4 -> every 25%, 8 -> 12.5%, 16 -> 6.25%)
-  const divisor = parseInt(document.getElementById('entryConfirmDivisor').value, 10) || 1;
-  if (ticksEl.dataset.divisor !== String(divisor)) {
-    ticksEl.dataset.divisor = String(divisor);
-    ticksEl.innerHTML = '';
-    if (divisor > 1) {
-      for (let i = 1; i < divisor; i++) {
-        const t = document.createElement('div');
-        t.style.cssText = `position:absolute; top:0; bottom:0; left:${(i / divisor) * 100}%; width:1px; background:var(--text-dim); opacity:0.6;`;
-        ticksEl.appendChild(t);
-      }
-    }
-  }
 }
 setInterval(renderH4Countdown, 1000);
 

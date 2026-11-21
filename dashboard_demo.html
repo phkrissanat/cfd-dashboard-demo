@@ -1739,7 +1739,6 @@ function updateChartMarkers(engineName) {
         position: isBuy ? 'belowBar' : 'aboveBar',
         color: isBuy ? '#26a69a' : '#ef5350',
         shape: isBuy ? 'arrowUp' : 'arrowDown',
-        text: `${tradeSideLabel(t.direction)} @ ${parseFloat(t.entry_price).toFixed(2)}`,
       });
     } catch (e) {
       // BUG FIX: one malformed/incomplete trade doc (e.g. a hand-edited test doc

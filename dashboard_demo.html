@@ -374,7 +374,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 0 0 8px 50px;
+    padding: 8px 0 8px 50px;
   }
 
 
@@ -891,10 +891,6 @@ const messages = {
   "openState": [
     "เปิดอยู่",
     "Open"
-  ],
-  "openCount": [
-    "{count} ไม้เปิดอยู่",
-    "Open positions: {count}"
   ],
   "noOpen": [
     "ไม่มีไม้เปิดอยู่",
@@ -1929,7 +1925,6 @@ function renderManualTradePanel() {
   panel.innerHTML = engines.map(eng => {
     const openTrades = allTrades.filter(t => t.engine === eng && t.status === 'open');
 
-    const statusText = openTrades.length ? tr('openCount', { count: openTrades.length }) : tr('noOpen');
     const positionsHtml = openTrades.length
       ? `<div class="manual-positions">
           ${openTrades.map(t => {
@@ -1945,10 +1940,9 @@ function renderManualTradePanel() {
           }).join('')}
         </div>`
       : '';
-    return `<div class="manual-row">
-      <div class="manual-status">${statusText}</div>
-    </div>
-    ${positionsHtml}`;
+    return positionsHtml || `<div class="manual-row">
+      <div class="manual-status">${tr('noOpen')}</div>
+    </div>`;
   }).join('');
   updateManualTradeProfits();
 }

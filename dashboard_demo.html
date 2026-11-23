@@ -1587,6 +1587,8 @@ const ENTRY_LINE_COLOR = '#f4d03f';
 const SL_LINE_COLOR = '#ef5350';
 const CANDLE_UP_COLOR = '#279b80';
 const CANDLE_DOWN_COLOR = '#cc5f78';
+const EMA_FAST_COLOR = '#4e81dc';
+const EMA_SLOW_COLOR = '#d8802e';
 
 function createTradeLineLayer(chart, series, color, dash = [], width = 2) {
   let levels = [];
@@ -1662,8 +1664,12 @@ function setupCandleChart(engineName) {
   candleSeries.attachPrimitive(currentPriceLine);
   const swingLabels = createSwingLabelLayer(chart, candleSeries);
   candleSeries.attachPrimitive(swingLabels);
-  const emaFastSeries = chart.addLineSeries({ color: '#4e81dc', lineWidth: 1, priceLineVisible: false, visible: chartDisplay.show_ema });
-  const emaSlowSeries = chart.addLineSeries({ color: '#d8802e', lineWidth: 1, priceLineVisible: false, visible: chartDisplay.show_ema });
+  const emaFastSeries = chart.addLineSeries({ color: EMA_FAST_COLOR, lineWidth: 1, priceLineVisible: false, visible: chartDisplay.show_ema });
+  const emaSlowSeries = chart.addLineSeries({ color: EMA_SLOW_COLOR, lineWidth: 1, priceLineVisible: false, visible: chartDisplay.show_ema });
+  const emaFastTail = createTradeLineLayer(chart, emaFastSeries, EMA_FAST_COLOR, [], 1);
+  const emaSlowTail = createTradeLineLayer(chart, emaSlowSeries, EMA_SLOW_COLOR, [], 1);
+  emaFastSeries.attachPrimitive(emaFastTail);
+  emaSlowSeries.attachPrimitive(emaSlowTail);
 
   chart.subscribeCrosshairMove(param => {
     if (!param.point || !param.time) {
@@ -1690,7 +1696,7 @@ function setupCandleChart(engineName) {
     }
   }).observe(wrap);
 
-  charts[engineName] = { chart, candleSeries, emaFastSeries, emaSlowSeries, swingLabels, entryLines, slLines, currentPriceLine, unsubscribe: null, lastBars: [], lastSwingsByProfile: {}, slPriceLines: [], entryPriceLines: [] };
+  charts[engineName] = { chart, candleSeries, emaFastSeries, emaSlowSeries, swingLabels, entryLines, slLines, currentPriceLine, emaFastTail, emaSlowTail, unsubscribe: null, lastBars: [], lastSwingsByProfile: {}, slPriceLines: [], entryPriceLines: [] };
 }
 
 // Canonical list of actual trading engines (matches config.json's engine names and
@@ -1858,27 +1864,15 @@ function updateSlLine(engineName) {
   }
 
   c.slLines.setLevels(levels);
-  return levels.reduce((latest, level) => Math.max(latest, level.barTime), -Infinity);
 }
 
-function updateIndicatorLines(c, slSwingTime) {
-  const bars = c.lastBars;
-  const latestBar = bars[bars.length - 1];
-  const latestSwingTime = Object.values(c.lastSwingsByProfile).flat()
-    .reduce((latest, swing) => Math.max(latest, swing.time), -Infinity);
-
-  // Without an anchored SL, use the newest confirmed swing for EMA and the latest candle for price.
-  const emaStart = Number.isFinite(slSwingTime) ? slSwingTime
-    : Number.isFinite(latestSwingTime) ? latestSwingTime
-    : bars[Math.max(0, bars.length - 2)]?.time;
-  const emaBars = bars.filter(bar => bar.time >= emaStart);
-  c.emaFastSeries.setData(emaBars.map(({ time, emaFast }) =>
-    Number.isFinite(emaFast) ? { time, value: emaFast } : { time }));
-  c.emaSlowSeries.setData(emaBars.map(({ time, emaSlow }) =>
-    Number.isFinite(emaSlow) ? { time, value: emaSlow } : { time }));
-
-  c.currentPriceLine.setLevels(latestBar && Number.isFinite(latestBar.close) ? [{
-    barTime: Number.isFinite(slSwingTime) ? slSwingTime : latestBar.time,
+function updateIndicatorTails(c) {
+  const latestBar = c.lastBars[c.lastBars.length - 1];
+  const level = price => Number.isFinite(price) ? [{ barTime: latestBar.time, price }] : [];
+  c.emaFastTail.setLevels(chartDisplay.show_ema ? level(latestBar?.emaFast) : []);
+  c.emaSlowTail.setLevels(chartDisplay.show_ema ? level(latestBar?.emaSlow) : []);
+  c.currentPriceLine.setLevels(Number.isFinite(latestBar?.close) ? [{
+    barTime: latestBar.time,
     price: latestBar.close,
     color: latestBar.close >= latestBar.open ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR,
   }] : []);
@@ -1948,9 +1942,8 @@ function updateChartMarkers(engineName) {
   markers.sort((a, b) => a.time - b.time);
   c.candleSeries.setMarkers(markers);
   c.swingLabels.setMarks(swingMarks);
-  const slSwingTime = updateSlLine(engineName);
+  updateSlLine(engineName);
   updateEntryLine(engineName);
-  updateIndicatorLines(c, slSwingTime);
 }
 
 function subscribeToLiveBars(db, engineName) {
@@ -1970,6 +1963,11 @@ function subscribeToLiveBars(db, engineName) {
     }));
     c.lastBars = candles;
     c.candleSeries.setData(candles);
+    c.emaFastSeries.setData(candles.map(({ time, emaFast }) =>
+      Number.isFinite(emaFast) ? { time, value: emaFast } : { time }));
+    c.emaSlowSeries.setData(candles.map(({ time, emaSlow }) =>
+      Number.isFinite(emaSlow) ? { time, value: emaSlow } : { time }));
+    updateIndicatorTails(c);
 
     if (candles.length) recomputeSwings(engineName, db);
     else {
@@ -2225,6 +2223,7 @@ function startDashboard(db) {
     for (const [engineName, chart] of Object.entries(charts)) {
       chart.emaFastSeries.applyOptions({ visible: chartDisplay.show_ema });
       chart.emaSlowSeries.applyOptions({ visible: chartDisplay.show_ema });
+      updateIndicatorTails(chart);
       updateChartMarkers(engineName);
     }
   }, (error) => {

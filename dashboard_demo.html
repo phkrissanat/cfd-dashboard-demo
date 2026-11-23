@@ -1585,8 +1585,10 @@ function createSwingLabelLayer(chart, series) {
 
 const ENTRY_LINE_COLOR = '#f4d03f';
 const SL_LINE_COLOR = '#ef5350';
+const CANDLE_UP_COLOR = '#279b80';
+const CANDLE_DOWN_COLOR = '#cc5f78';
 
-function createTradeLineLayer(chart, series, color, dash = []) {
+function createTradeLineLayer(chart, series, color, dash = [], width = 2) {
   let levels = [];
   let redraw = () => {};
 
@@ -1596,18 +1598,18 @@ function createTradeLineLayer(chart, series, color, dash = []) {
         target.useMediaCoordinateSpace(({ context, mediaSize }) => {
           const timeScale = chart.timeScale();
           context.save();
-          context.strokeStyle = color;
-          context.lineWidth = 2;
+          context.lineWidth = width;
           context.setLineDash(dash);
-          context.beginPath();
           for (const level of levels) {
             const x = level.barTime === null ? 0 : timeScale.timeToCoordinate(level.barTime);
             const y = series.priceToCoordinate(level.price);
             if (x === null || x >= mediaSize.width || y === null || y < 0 || y > mediaSize.height) continue;
+            context.strokeStyle = level.color ?? color;
+            context.beginPath();
             context.moveTo(Math.max(0, x), y);
             context.lineTo(mediaSize.width, y);
+            context.stroke();
           }
-          context.stroke();
           context.restore();
         });
       },
@@ -1647,18 +1649,21 @@ function setupCandleChart(engineName) {
     height: wrap.clientHeight,
   });
   const candleSeries = chart.addCandlestickSeries({
-    upColor: '#279b80', downColor: '#cc5f78',
+    upColor: CANDLE_UP_COLOR, downColor: CANDLE_DOWN_COLOR,
     borderVisible: false,
-    wickUpColor: '#279b80', wickDownColor: '#cc5f78',
+    wickUpColor: CANDLE_UP_COLOR, wickDownColor: CANDLE_DOWN_COLOR,
+    priceLineVisible: false,
   });
   const entryLines = createTradeLineLayer(chart, candleSeries, ENTRY_LINE_COLOR);
   const slLines = createTradeLineLayer(chart, candleSeries, SL_LINE_COLOR, [4, 4]);
   candleSeries.attachPrimitive(entryLines);
   candleSeries.attachPrimitive(slLines);
+  const currentPriceLine = createTradeLineLayer(chart, candleSeries, CANDLE_UP_COLOR, [2, 3], 1);
+  candleSeries.attachPrimitive(currentPriceLine);
   const swingLabels = createSwingLabelLayer(chart, candleSeries);
   candleSeries.attachPrimitive(swingLabels);
-  const emaFastSeries = chart.addLineSeries({ color: '#4e81dc', lineWidth: 1, visible: chartDisplay.show_ema });
-  const emaSlowSeries = chart.addLineSeries({ color: '#d8802e', lineWidth: 1, visible: chartDisplay.show_ema });
+  const emaFastSeries = chart.addLineSeries({ color: '#4e81dc', lineWidth: 1, priceLineVisible: false, visible: chartDisplay.show_ema });
+  const emaSlowSeries = chart.addLineSeries({ color: '#d8802e', lineWidth: 1, priceLineVisible: false, visible: chartDisplay.show_ema });
 
   chart.subscribeCrosshairMove(param => {
     if (!param.point || !param.time) {
@@ -1685,7 +1690,7 @@ function setupCandleChart(engineName) {
     }
   }).observe(wrap);
 
-  charts[engineName] = { chart, candleSeries, emaFastSeries, emaSlowSeries, swingLabels, entryLines, slLines, unsubscribe: null, lastBars: [], lastSwingsByProfile: {}, slPriceLines: [], entryPriceLines: [] };
+  charts[engineName] = { chart, candleSeries, emaFastSeries, emaSlowSeries, swingLabels, entryLines, slLines, currentPriceLine, unsubscribe: null, lastBars: [], lastSwingsByProfile: {}, slPriceLines: [], entryPriceLines: [] };
 }
 
 // Canonical list of actual trading engines (matches config.json's engine names and
@@ -1853,6 +1858,30 @@ function updateSlLine(engineName) {
   }
 
   c.slLines.setLevels(levels);
+  return levels.reduce((latest, level) => Math.max(latest, level.barTime), -Infinity);
+}
+
+function updateIndicatorLines(c, slSwingTime) {
+  const bars = c.lastBars;
+  const latestBar = bars[bars.length - 1];
+  const latestSwingTime = Object.values(c.lastSwingsByProfile).flat()
+    .reduce((latest, swing) => Math.max(latest, swing.time), -Infinity);
+
+  // Without an anchored SL, use the newest confirmed swing for EMA and the latest candle for price.
+  const emaStart = Number.isFinite(slSwingTime) ? slSwingTime
+    : Number.isFinite(latestSwingTime) ? latestSwingTime
+    : bars[Math.max(0, bars.length - 2)]?.time;
+  const emaBars = bars.filter(bar => bar.time >= emaStart);
+  c.emaFastSeries.setData(emaBars.map(({ time, emaFast }) =>
+    Number.isFinite(emaFast) ? { time, value: emaFast } : { time }));
+  c.emaSlowSeries.setData(emaBars.map(({ time, emaSlow }) =>
+    Number.isFinite(emaSlow) ? { time, value: emaSlow } : { time }));
+
+  c.currentPriceLine.setLevels(latestBar && Number.isFinite(latestBar.close) ? [{
+    barTime: Number.isFinite(slSwingTime) ? slSwingTime : latestBar.time,
+    price: latestBar.close,
+    color: latestBar.close >= latestBar.open ? CANDLE_UP_COLOR : CANDLE_DOWN_COLOR,
+  }] : []);
 }
 
 function updateEntryLine(engineName) {
@@ -1919,8 +1948,9 @@ function updateChartMarkers(engineName) {
   markers.sort((a, b) => a.time - b.time);
   c.candleSeries.setMarkers(markers);
   c.swingLabels.setMarks(swingMarks);
-  updateSlLine(engineName);
+  const slSwingTime = updateSlLine(engineName);
   updateEntryLine(engineName);
+  updateIndicatorLines(c, slSwingTime);
 }
 
 function subscribeToLiveBars(db, engineName) {
@@ -1936,15 +1966,16 @@ function subscribeToLiveBars(db, engineName) {
     const candles = bars.map(b => ({
       time: Math.floor(new Date(b.time).getTime() / 1000),
       open: b.open, high: b.high, low: b.low, close: b.close,
+      emaFast: b.ema_fast, emaSlow: b.ema_slow,
     }));
-    const emaFast = bars.map(b => ({ time: Math.floor(new Date(b.time).getTime() / 1000), value: b.ema_fast }));
-    const emaSlow = bars.map(b => ({ time: Math.floor(new Date(b.time).getTime() / 1000), value: b.ema_slow }));
     c.lastBars = candles;
     c.candleSeries.setData(candles);
-    c.emaFastSeries.setData(emaFast);
-    c.emaSlowSeries.setData(emaSlow);
 
-    recomputeSwings(engineName, db);
+    if (candles.length) recomputeSwings(engineName, db);
+    else {
+      c.lastSwingsByProfile = {};
+      updateChartMarkers(engineName);
+    }
     render();
     updateManualTradeProfits();
   }, (err) => console.error(`live_bars listener error (${engineName})`, err));
@@ -1967,7 +1998,7 @@ function recomputeSwings(engineName, db) {
   // visible during a strong sustained move, where the still-moving live bar keeps
   // "beating" the most recent real turning point every single update, so it never
   // gets to confirm at all until the move pauses. The chart itself is unaffected -
-  // candleSeries/emaFastSeries/emaSlowSeries render every bar including the live one;
+  // The chart still uses the live bar;
   // only this swing scan excludes it.
   const closedCandles = c.lastBars.slice(0, -1);
   const profiles = SWING_PROFILES[engineName] || [];

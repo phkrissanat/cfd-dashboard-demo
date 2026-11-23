@@ -1584,8 +1584,9 @@ function createSwingLabelLayer(chart, series) {
 }
 
 const ENTRY_LINE_COLOR = '#f4d03f';
+const SL_LINE_COLOR = '#ef5350';
 
-function createEntryLineLayer(chart, series) {
+function createTradeLineLayer(chart, series, color, dash = []) {
   let levels = [];
   let redraw = () => {};
 
@@ -1594,8 +1595,10 @@ function createEntryLineLayer(chart, series) {
       draw(target) {
         target.useMediaCoordinateSpace(({ context, mediaSize }) => {
           const timeScale = chart.timeScale();
-          context.strokeStyle = ENTRY_LINE_COLOR;
+          context.save();
+          context.strokeStyle = color;
           context.lineWidth = 2;
+          context.setLineDash(dash);
           context.beginPath();
           for (const level of levels) {
             const x = level.barTime === null ? 0 : timeScale.timeToCoordinate(level.barTime);
@@ -1605,6 +1608,7 @@ function createEntryLineLayer(chart, series) {
             context.lineTo(mediaSize.width, y);
           }
           context.stroke();
+          context.restore();
         });
       },
     }),
@@ -1647,8 +1651,10 @@ function setupCandleChart(engineName) {
     borderVisible: false,
     wickUpColor: '#279b80', wickDownColor: '#cc5f78',
   });
-  const entryLines = createEntryLineLayer(chart, candleSeries);
+  const entryLines = createTradeLineLayer(chart, candleSeries, ENTRY_LINE_COLOR);
+  const slLines = createTradeLineLayer(chart, candleSeries, SL_LINE_COLOR, [4, 4]);
   candleSeries.attachPrimitive(entryLines);
+  candleSeries.attachPrimitive(slLines);
   const swingLabels = createSwingLabelLayer(chart, candleSeries);
   candleSeries.attachPrimitive(swingLabels);
   const emaFastSeries = chart.addLineSeries({ color: '#4e81dc', lineWidth: 1, visible: chartDisplay.show_ema });
@@ -1679,7 +1685,7 @@ function setupCandleChart(engineName) {
     }
   }).observe(wrap);
 
-  charts[engineName] = { chart, candleSeries, emaFastSeries, emaSlowSeries, swingLabels, entryLines, unsubscribe: null, lastBars: [], lastSwingsByProfile: {}, slPriceLines: [], entryPriceLines: [] };
+  charts[engineName] = { chart, candleSeries, emaFastSeries, emaSlowSeries, swingLabels, entryLines, slLines, unsubscribe: null, lastBars: [], lastSwingsByProfile: {}, slPriceLines: [], entryPriceLines: [] };
 }
 
 // Canonical list of actual trading engines (matches config.json's engine names and
@@ -1821,19 +1827,32 @@ function updateManualTradeProfits() {
 function updateSlLine(engineName) {
   const c = charts[engineName];
   if (!c || !c.candleSeries) return;
-  (c.slPriceLines || []).forEach(line => c.candleSeries.removePriceLine(line));
+  c.slPriceLines.forEach(line => c.candleSeries.removePriceLine(line));
   c.slPriceLines = [];
-  const openTrades = allTrades.filter(t => t.engine === engineName && t.status === 'open' && t.sl_price != null);
-  openTrades.forEach(t => {
+  const levels = [];
+  const swings = Object.values(c.lastSwingsByProfile).flat();
+
+  for (const trade of allTrades) {
+    if (trade.engine !== engineName || trade.status !== 'open') continue;
+    const price = parseFloat(trade.sl_price);
+    if (!Number.isFinite(price) || price <= 0) continue;
     c.slPriceLines.push(c.candleSeries.createPriceLine({
-      price: parseFloat(t.sl_price),
-      color: '#ef5350',
-      lineWidth: 2,
-      lineStyle: LightweightCharts.LineStyle.Dashed,
+      price,
+      color: SL_LINE_COLOR,
+      lineVisible: false,
       axisLabelVisible: true,
       title: 'SL',
     }));
-  });
+
+    const type = trade.direction === 'BUY' ? 'low' : trade.direction === 'SELL' ? 'high' : null;
+    // Trades report the applied stop price but not its source time. An exact,
+    // unique price match can locate a swing; a manual or clamped stop may have no match.
+    const matches = new Set(swings.filter(swing => swing.type === type && swing.price === price)
+      .map(swing => swing.time));
+    if (matches.size === 1) levels.push({ barTime: matches.values().next().value, price });
+  }
+
+  c.slLines.setLevels(levels);
 }
 
 function updateEntryLine(engineName) {
